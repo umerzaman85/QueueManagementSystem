@@ -1,0 +1,774 @@
+{% extends 'queue/base.html' %}
+{% load static %}
+
+{% block header %}{% include "queue/header.html" %}{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  {{ error }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="alert alert-info d-inline-flex align-items-center mb-4 px-3 py-2 rounded">
+  <i class="fas fa-user-tag me-2"></i>
+  <strong>Assigned Counter:</strong>&nbsp;{{ counter.name }}
+</div>
+
+<h2 class="mb-4 text-center">Staff Dashboard</h2>
+
+{% if counter %}
+
+<!-- Ticket Summary Card -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body text-center">
+    <h5 class="text-muted mb-4">Ticket Summary</h5>
+    <div class="d-flex justify-content-between flex-wrap">
+      <div class="ticket-circle total">
+        <span class="count" id="count-total">{{ ticket_counts.total|default:0 }}</span>
+        <span class="label">Total</span>
+      </div>
+      <div class="ticket-circle waiting">
+        <span class="count" id="count-waiting">{{ ticket_counts.waiting|default:0 }}</span>
+        <span class="label">Waiting</span>
+      </div>
+      <div class="ticket-circle served">
+        <span class="count" id="count-served">{{ ticket_counts.served|default:0 }}</span>
+        <span class="label">Served</span>
+      </div>
+      <div class="ticket-circle skipped">
+        <span class="count" id="count-skipped">{{ ticket_counts.skipped|default:0 }}</span>
+        <span class="label">Skipped</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Current Ticket Card -->
+<div class="mb-4 text-center">
+  <div class="h6 text-muted">Current Ticket</div>
+  <div id="currentCode" class="display-4 fw-bold my-1">
+    {% if current_ticket %}{{ current_ticket.display_code }}{% else %}<span class="text-secondary">—</span>{% endif %}
+  </div>
+  <div id="currentTicketId" class="small text-dark fw-semibold mt-1">
+    {% if current_ticket %}Ticket ID: <span class="text-warning">{{ current_ticket.id }}</span>
+    {% else %}Ticket ID: <span class="text-warning">—</span>{% endif %}
+  </div>
+  <div id="currentService" class="h5 fw-semibold text-primary mt-1">
+    {% if current_ticket %}{{ current_ticket.service.name }}{% else %}&nbsp;{% endif %}
+  </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
+  <button class="btn btn-outline-secondary" data-action="prev"><i class="fas fa-backward me-1"></i> Prev</button>
+  <button class="btn btn-primary" data-action="next"><i class="fas fa-forward me-1"></i> Next</button>
+  <button class="btn btn-outline-info" data-action="recall"><i class="fas fa-bell me-1"></i> Recall</button>
+  <button class="btn btn-success" data-action="done"><i class="fas fa-check me-1"></i> Done</button>
+  <button class="btn btn-danger" data-action="skip"><i class="fas fa-ban me-1"></i> Skip</button>
+</div>
+
+<!-- Transfer Ticket -->
+<div class="mt-3">
+  <label for="transfer_counter">Transfer Ticket to Counter:</label>
+  <select id="transfer_counter" class="form-select w-auto d-inline-block">
+    {% for c in transfer_counters %}
+      <option value="{{ c.id }}">{{ c.name }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" id="transfer_ticket_id" class="form-control w-auto d-inline-block"
+         placeholder="Enter Ticket ID (optional)"
+         value="{% if current_ticket %}{{ current_ticket.id }}{% endif %}">
+  <button id="transfer_ticket" class="btn btn-warning">Transfer Ticket</button>
+</div>
+
+<!-- ================================================================
+     ACTIVE TICKET RECALL PANEL
+     Source: CallEvent table — every ticket this counter has ever
+     called via NEXT / PREV / RECALL that is not yet finished.
+     ================================================================ -->
+<div class="recall-panel mt-4">
+
+  <div class="recall-panel__header">
+    <div class="recall-panel__title">
+      <i class="fas fa-layer-group me-2"></i>Active Ticket Queue
+    </div>
+    <div class="recall-panel__meta">
+      <span class="recall-panel__count" id="recallCount">0 tickets</span>
+      <button class="recall-panel__refresh" id="recallRefreshBtn" title="Refresh">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="recall-panel__search-wrap">
+    <i class="fas fa-search recall-panel__search-icon"></i>
+    <input type="text" id="recallSearch" class="recall-panel__search"
+           placeholder="Search by ticket code (e.g. A001) or service name…"
+           autocomplete="off">
+  </div>
+
+  <!-- Debug row — remove after confirming it works -->
+  <div id="recallDebug" class="px-3 py-1" style="font-size:.75rem;color:#94a3b8;display:none;"></div>
+
+  <div class="recall-panel__grid" id="recallGrid">
+    <div class="recall-panel__empty" id="recallEmpty">
+      <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+      No active tickets yet
+    </div>
+  </div>
+
+</div>
+
+{% endif %}
+
+<!-- Transfer Confirmation Modal -->
+<div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Transfer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p id="transferConfirmText" class="mb-0 fw-semibold text-dark">
+          Are you sure you want to transfer this ticket?
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="confirmTransfer">Yes, Transfer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recall Specific Ticket Modal -->
+<div class="modal fade" id="recallTicketModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content recall-modal">
+      <div class="recall-modal__body">
+        <div class="recall-modal__code"    id="recallModalCode">—</div>
+        <div class="recall-modal__service" id="recallModalService"></div>
+        <div class="recall-modal__status"  id="recallModalStatus"></div>
+      </div>
+      <div class="recall-modal__footer">
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning btn-sm fw-semibold"
+                id="recallModalConfirm">
+          <i class="fas fa-bell me-1"></i>Recall This Ticket
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="msg" class="position-fixed bottom-0 end-0 p-3" style="z-index:9999;display:none;">
+  <div class="toast align-items-center border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="msg-text"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== STATE ===== */
+let currentTicketId = {% if current_ticket %}{{ current_ticket.id }}{% else %}null{% endif %};
+const currentCounterId = {{ counter.id|default:0 }};
+
+/* ===== HELPERS ===== */
+
+/**
+ * Retrieve a cookie value by name.
+ * Falls back to a <meta name="csrf-token"> tag so Safari ITP users
+ * (who may have cookie access restricted) still get a valid token.
+ */
+function getCsrfToken() {
+    var v = "; " + document.cookie;
+    var parts = v.split("; csrftoken=");
+    if (parts.length === 2) {
+        return parts.pop().split(";").shift();
+    }
+    // Meta-tag fallback (add {% csrf_token %} or a meta tag to base.html if needed)
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute("content") : "";
+}
+
+function showMsg(text, isError) {
+    if (isError === undefined) { isError = true; }
+    var el     = document.getElementById("msg");
+    var body   = document.getElementById("msg-text");
+    var toastEl = el.querySelector(".toast");
+    body.textContent = text;
+    el.style.display = "block";
+    toastEl.classList.remove("text-bg-danger", "text-bg-success");
+    toastEl.classList.add(isError ? "text-bg-danger" : "text-bg-success");
+    bootstrap.Toast.getOrCreateInstance(toastEl).show();
+}
+
+/* ===== UI UPDATE ===== */
+
+function updateTicketDisplay(t) {
+    /*
+     * Always update — even when t is empty/null — so the display clears
+     * correctly after a Done/Skip, not just when a new ticket is present.
+     */
+    t = t || {};
+    currentTicketId = t.id || null;
+
+    var codeEl = document.getElementById("currentCode");
+    if (codeEl) {
+        codeEl.innerHTML = t.code
+            ? t.code
+            : '<span class="text-secondary">\u2014</span>';
+    }
+    var idEl = document.getElementById("currentTicketId");
+    if (idEl) {
+        idEl.innerHTML = t.id
+            ? 'Ticket ID: <span class="text-warning">' + t.id + '</span>'
+            : 'Ticket ID: <span class="text-warning">\u2014</span>';
+    }
+    var svcEl = document.getElementById("currentService");
+    if (svcEl) { svcEl.textContent = t.service || ""; }
+
+    var inp = document.getElementById("transfer_ticket_id");
+    if (inp) { inp.value = currentTicketId || ""; }
+}
+
+function updateCounts(cnt) {
+    if (!cnt) { return; }
+    var total   = document.getElementById("count-total");
+    var waiting = document.getElementById("count-waiting");
+    var served  = document.getElementById("count-served");
+    var skipped = document.getElementById("count-skipped");
+    if (total)   { total.textContent   = cnt.total   != null ? cnt.total   : 0; }
+    if (waiting) { waiting.textContent = cnt.waiting != null ? cnt.waiting : 0; }
+    if (served)  { served.textContent  = cnt.served  != null ? cnt.served  : 0; }
+    if (skipped) { skipped.textContent = cnt.skipped != null ? cnt.skipped : 0; }
+}
+
+/* ===== POLLING ===== */
+
+/*
+ * In-flight flags — prevent a new poll from launching before the previous
+ * one resolves, avoiding stale-response race conditions.
+ */
+var _ticketFetchInFlight = false;
+var _recallFetchInFlight = false;
+
+function fetchCurrentTicket() {
+    if (!currentCounterId || _ticketFetchInFlight) { return; }
+    _ticketFetchInFlight = true;
+
+    fetch("/staff/current-ticket/?counter_id=" + currentCounterId)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d) {
+                /*
+                 * Always call updateTicketDisplay — passing null clears the
+                 * display when there is no current ticket (e.g. after Done).
+                 */
+                updateTicketDisplay(d.current_ticket || null);
+                if (d.ticket_counts) { updateCounts(d.ticket_counts); }
+            }
+        })
+        .catch(function(err) { console.warn("fetchCurrentTicket error:", err); })
+        .then(function() { _ticketFetchInFlight = false; }); // .then as .finally for compat
+}
+
+function reloadTransferList() {
+    if (!currentCounterId) { return; }
+    fetch("/staff/transfer-list/?counter_id=" + currentCounterId)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var sel = document.getElementById("transfer_counter");
+            if (sel && d.counters) {
+                sel.innerHTML = "";
+                d.counters.forEach(function(c) {
+                    var o = document.createElement("option");
+                    o.value = c.id;
+                    o.textContent = c.name;
+                    sel.appendChild(o);
+                });
+            }
+        })
+        .catch(function(err) { console.warn("reloadTransferList error:", err); });
+}
+
+/* ===== RECALL PANEL ===== */
+var _allTickets    = [];
+var _recallPending = null;
+
+var STATUS_META = {
+    WAITING:     { label: "Waiting",     cls: "rp-badge--waiting"     },
+    CALLING:     { label: "Calling",     cls: "rp-badge--calling"     },
+    TRANSFERRED: { label: "Transferred", cls: "rp-badge--transferred" },
+};
+
+function matchesSearch(ticket, q) {
+    if (!q) { return true; }
+    var code    = ticket.code.toLowerCase();
+    var service = ticket.service.toLowerCase();
+    var seqStr  = String(ticket.sequence);
+    return code.indexOf(q) !== -1 || service.indexOf(q) !== -1 || seqStr.indexOf(q) !== -1;
+}
+
+function applyRecallSearch() {
+    var q = (document.getElementById("recallSearch").value || "").toLowerCase().trim();
+    renderRecallGrid(_allTickets.filter(function(t) { return matchesSearch(t, q); }));
+}
+
+function renderRecallGrid(tickets) {
+    var grid  = document.getElementById("recallGrid");
+    var empty = document.getElementById("recallEmpty");
+    var count = document.getElementById("recallCount");
+
+    count.textContent = tickets.length + " ticket" + (tickets.length !== 1 ? "s" : "");
+
+    if (!tickets.length) {
+        var cards = grid.querySelectorAll(".rp-card");
+        for (var i = 0; i < cards.length; i++) { cards[i].parentNode.removeChild(cards[i]); }
+        empty.style.display = "block";
+        return;
+    }
+    empty.style.display = "none";
+
+    // Keyed update — only touch changed cards
+    var existing = {};
+    var existingCards = grid.querySelectorAll(".rp-card");
+    for (var i = 0; i < existingCards.length; i++) {
+        existing[existingCards[i].dataset.id] = existingCards[i];
+    }
+
+    var liveIds = {};
+    tickets.forEach(function(t) { liveIds[String(t.id)] = true; });
+    Object.keys(existing).forEach(function(id) {
+        if (!liveIds[id]) { existing[id].parentNode.removeChild(existing[id]); }
+    });
+
+    tickets.forEach(function(t, idx) {
+        var sid  = String(t.id);
+        var meta = STATUS_META[t.status] || { label: t.status, cls: "rp-badge--waiting" };
+        var badge = t.is_current
+            ? '<span class="rp-badge rp-badge--current">Now Serving</span>'
+            : '<span class="rp-badge ' + meta.cls + '">' + meta.label + '</span>';
+
+        var card = existing[sid];
+        if (!card) {
+            card = document.createElement("div");
+            card.className = "rp-card";
+            card.dataset.id = sid;
+            card.style.animationDelay = (idx * 35) + "ms";
+            card.innerHTML =
+                '<div class="rp-card__code"></div>' +
+                '<div class="rp-card__service"></div>' +
+                '<div class="rp-card__badge"></div>' +
+                '<button class="rp-card__btn"><i class="fas fa-bell me-1"></i>Recall</button>';
+            grid.appendChild(card);
+        }
+
+        card.querySelector(".rp-card__code").textContent    = t.code;
+        card.querySelector(".rp-card__service").textContent = t.service;
+        card.querySelector(".rp-card__badge").innerHTML     = badge;
+
+        // classList.toggle with a boolean second arg isn't in older Safari — use add/remove
+        if (t.is_current) {
+            card.classList.add("rp-card--current");
+        } else {
+            card.classList.remove("rp-card--current");
+        }
+
+        // Rebind click each render to capture the latest ticket snapshot
+        (function(ticket) {
+            card.querySelector(".rp-card__btn").onclick = function() { openRecallModal(ticket); };
+        }(t));
+    });
+}
+
+function loadRecallList(silent) {
+    if (!currentCounterId || _recallFetchInFlight) { return; }
+    _recallFetchInFlight = true;
+
+    var btn = document.getElementById("recallRefreshBtn");
+    if (!silent) { btn.classList.add("spinning"); }
+
+    fetch("/staff/recall-list/?counter_id=" + currentCounterId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok === false) {
+                if (!silent) { showMsg(data.message || "Could not load ticket list.", true); }
+                return;
+            }
+            _allTickets = data.tickets || [];
+            applyRecallSearch();
+        })
+        .catch(function(err) { console.warn("recall-list fetch error:", err); })
+        .then(function() {        // .then as .finally for IE/old-Safari compat
+            _recallFetchInFlight = false;
+            btn.classList.remove("spinning");
+        });
+}
+
+/* ---------- modal ---------- */
+function openRecallModal(ticket) {
+    _recallPending = ticket;
+    document.getElementById("recallModalCode").textContent    = ticket.code;
+    document.getElementById("recallModalService").textContent = ticket.service;
+    var meta = STATUS_META[ticket.status] || { label: ticket.status, cls: "rp-badge--waiting" };
+    document.getElementById("recallModalStatus").innerHTML = ticket.is_current
+        ? '<span class="rp-badge rp-badge--current">Currently Serving</span>'
+        : '<span class="rp-badge ' + meta.cls + '">' + meta.label + '</span>';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("recallTicketModal")).show();
+}
+
+function recallSpecificTicket(ticketId) {
+    var body = "ticket_id=" + encodeURIComponent(ticketId);
+    fetch("/staff/recall-ticket/", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCsrfToken(),
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: body
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        showMsg(data.message || (data.ok ? "Ticket recalled." : "Recall failed."), !data.ok);
+        if (data.ok) {
+            if (data.current)       { updateTicketDisplay(data.current); }
+            if (data.ticket_counts) { updateCounts(data.ticket_counts); }
+            loadRecallList(true);
+            reloadTransferList();
+        }
+    })
+    .catch(function() { showMsg("Server error during recall.", true); });
+}
+
+/* ===== WEBSOCKET ===== */
+var socket = null, reconnectAttempts = 0, reconnectTimeout = null, lastSeenKey = null;
+var maxReconnectAttempts = 5;
+
+function connectWebSocket() {
+    if (reconnectTimeout) { clearTimeout(reconnectTimeout); reconnectTimeout = null; }
+    if (socket && socket.readyState === WebSocket.OPEN) { socket.close(); }
+    var proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    socket = new WebSocket(proto + "//" + window.location.host + "/ws/call/");
+    socket.onopen = function() { reconnectAttempts = 0; };
+    socket.onmessage = function(e) {
+        try {
+            var d = JSON.parse(e.data);
+            if (!d.code || !d.service) { return; }
+            var key = d.code + "-" + d.counter;
+            var now = Date.now();
+            if (lastSeenKey && lastSeenKey.key === key && now - lastSeenKey.time < 2000) { return; }
+            lastSeenKey = { key: key, time: now };
+            showMsg("Ticket " + d.code + " called to " + d.counter, false);
+            setTimeout(function() { fetchCurrentTicket(); loadRecallList(true); }, 500);
+        } catch (err) {
+            console.warn("WebSocket message parse error:", err);
+        }
+    };
+    socket.onerror = function(e) { console.warn("WebSocket error:", e); };
+    socket.onclose = function() {
+        if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            var delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+            reconnectTimeout = setTimeout(connectWebSocket, delay);
+        } else {
+            showMsg("Connection lost. Please refresh.", true);
+        }
+    };
+}
+
+/* ===== AUTO-REFRESH (Page Visibility aware) ===== */
+var _autoRefreshInterval = null;
+
+function startAutoRefresh() {
+    if (_autoRefreshInterval) { return; }
+    _autoRefreshInterval = setInterval(function() {
+        fetchCurrentTicket();
+        loadRecallList(true);
+    }, 3000);
+}
+
+function stopAutoRefresh() {
+    if (_autoRefreshInterval) {
+        clearInterval(_autoRefreshInterval);
+        _autoRefreshInterval = null;
+    }
+}
+
+// Pause polling when the browser tab is hidden; resume when it becomes visible again.
+// This avoids firing network requests that will be queued and may cause a burst of
+// stale updates when the user returns to the tab.
+if (typeof document.hidden !== "undefined") {
+    document.addEventListener("visibilitychange", function() {
+        if (document.hidden) {
+            stopAutoRefresh();
+        } else {
+            // Immediately sync state after returning to the tab, then restart interval
+            fetchCurrentTicket();
+            loadRecallList(true);
+            startAutoRefresh();
+        }
+    });
+}
+
+/* ===== ACTIONS ===== */
+function doAction(action) {
+    var params = new URLSearchParams({ action: action });
+    if (action === "next" || action === "prev") { params.append("prefer", "transfer"); }
+    fetch("/staff/action", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCsrfToken(),
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: params.toString()
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.ok) { showMsg(data.message || "Action failed", true); return; }
+        updateTicketDisplay(data.current || null);
+        if (data.ticket_counts) { updateCounts(data.ticket_counts); }
+        showMsg(data.message || "Action completed", false);
+        reloadTransferList();
+        loadRecallList(true);
+    })
+    .catch(function() { showMsg("Server error", true); });
+}
+
+/* ===== INIT ===== */
+document.addEventListener("DOMContentLoaded", function() {
+
+    document.querySelectorAll("[data-action]").forEach(function(btn) {
+        btn.addEventListener("click", function() { doAction(this.dataset.action); });
+    });
+
+    var pendingTransfer = null;
+    var transferBtn = document.getElementById("transfer_ticket");
+    if (transferBtn) {
+        transferBtn.onclick = function() {
+            if (!currentTicketId) { showMsg("No ticket selected", true); return; }
+            var sel  = document.getElementById("transfer_counter");
+            var code = document.getElementById("currentCode").textContent.trim();
+            var ct   = document.getElementById("transferConfirmText");
+            if (ct && sel && sel.options.length > 0) {
+                ct.textContent =
+                    "Transfer ticket " + code + " to " + sel.options[sel.selectedIndex].text + "?";
+                pendingTransfer = { ticket_id: currentTicketId, counter_id: sel.value };
+                bootstrap.Modal.getOrCreateInstance(document.getElementById("transferModal")).show();
+            }
+        };
+    }
+
+    document.getElementById("confirmTransfer").addEventListener("click", function() {
+        if (!pendingTransfer) { return; }
+        var transferModal = bootstrap.Modal.getInstance(document.getElementById("transferModal"));
+        if (transferModal) { transferModal.hide(); }
+
+        var body = "ticket_id=" + encodeURIComponent(pendingTransfer.ticket_id) +
+                   "&counter_id=" + encodeURIComponent(pendingTransfer.counter_id);
+        fetch("{% url 'staff_transfer_ticket' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: body
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            showMsg(resp.message, !resp.ok);
+            updateTicketDisplay(resp.current_ticket || null);
+            if (resp.ticket_counts) { updateCounts(resp.ticket_counts); }
+            reloadTransferList();
+            loadRecallList(true);
+            pendingTransfer = null;
+        })
+        .catch(function() { showMsg("Transfer failed", true); pendingTransfer = null; });
+    });
+
+    document.getElementById("recallModalConfirm").addEventListener("click", function() {
+        if (!_recallPending) { return; }
+        var recallModal = bootstrap.Modal.getInstance(document.getElementById("recallTicketModal"));
+        if (recallModal) { recallModal.hide(); }
+        recallSpecificTicket(_recallPending.id);
+        _recallPending = null;
+    });
+
+    document.getElementById("recallSearch").addEventListener("input", applyRecallSearch);
+    document.getElementById("recallRefreshBtn").addEventListener("click", function() {
+        loadRecallList(false);
+    });
+
+    // Initial data load
+    reloadTransferList();
+    fetchCurrentTicket();
+    loadRecallList(false);
+    connectWebSocket();
+
+    // Start periodic auto-refresh (pauses automatically when tab is hidden)
+    startAutoRefresh();
+});
+</script>
+
+<style>
+/* ── Recall panel shell ──────────────────────── */
+.recall-panel{
+    background:#fff;border:1px solid #e2e8f0;
+    border-radius:14px;box-shadow:0 2px 16px rgba(0,0,0,.07);
+    overflow:hidden;margin-bottom:2rem;
+}
+.recall-panel__header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 20px;
+    background:linear-gradient(90deg,#1e3a5f 0%,#2563eb 100%);color:#fff;
+}
+.recall-panel__title{font-size:.92rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+.recall-panel__meta{display:flex;align-items:center;gap:10px;}
+.recall-panel__count{
+    font-size:.75rem;background:rgba(255,255,255,.18);
+    border-radius:20px;padding:2px 10px;font-weight:600;
+}
+.recall-panel__refresh{
+    background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+    color:#fff;border-radius:6px;width:30px;height:30px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:background .2s;padding:0;
+}
+.recall-panel__refresh:hover{background:rgba(255,255,255,.28);}
+.recall-panel__refresh.spinning i{animation:rp-spin .7s linear infinite;}
+@keyframes rp-spin{to{transform:rotate(360deg);}}
+
+/* ── Search ──────────────────────────────────── */
+.recall-panel__search-wrap{
+    position:relative;padding:12px 16px 8px;
+    border-bottom:1px solid #f1f5f9;
+}
+.recall-panel__search-icon{
+    position:absolute;left:28px;top:50%;transform:translateY(-50%);
+    color:#94a3b8;font-size:.8rem;pointer-events:none;
+}
+.recall-panel__search{
+    width:100%;padding:7px 12px 7px 32px;
+    border:1px solid #e2e8f0;border-radius:8px;
+    font-size:.85rem;color:#334155;background:#f8fafc;
+    outline:none;transition:border-color .2s,box-shadow .2s;
+}
+.recall-panel__search:focus{
+    border-color:#2563eb;
+    box-shadow:0 0 0 3px rgba(37,99,235,.1);background:#fff;
+}
+
+/* ── Grid ────────────────────────────────────── */
+.recall-panel__grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(155px,1fr));
+    gap:12px;padding:16px;
+    max-height:340px;overflow-y:auto;
+}
+.recall-panel__grid::-webkit-scrollbar{width:5px;}
+.recall-panel__grid::-webkit-scrollbar-track{background:#f1f5f9;border-radius:4px;}
+.recall-panel__grid::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+.recall-panel__empty{
+    grid-column:1/-1;text-align:center;
+    color:#94a3b8;padding:32px 0;font-size:.88rem;
+}
+
+/* ── Card ────────────────────────────────────── */
+.rp-card{
+    background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;
+    padding:12px 10px 10px;
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    transition:border-color .2s,box-shadow .2s,transform .2s;
+    animation:rp-in .25s ease both;
+}
+@keyframes rp-in{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.rp-card:hover{
+    border-color:#2563eb;
+    box-shadow:0 4px 14px rgba(37,99,235,.12);
+    transform:translateY(-2px);
+}
+.rp-card--current{
+    border-color:#f59e0b;background:#fffbeb;
+    box-shadow:0 0 0 3px rgba(245,158,11,.15);
+}
+.rp-card--current:hover{
+    border-color:#d97706;
+    box-shadow:0 4px 14px rgba(245,158,11,.25);
+}
+.rp-card__code{
+    font-size:1.5rem;font-weight:800;color:#1e3a5f;
+    letter-spacing:.04em;line-height:1;
+}
+.rp-card--current .rp-card__code{color:#92400e;}
+.rp-card__service{
+    font-size:.72rem;color:#64748b;text-align:center;
+    line-height:1.3;width:100%;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ── Badges ──────────────────────────────────── */
+.rp-badge{
+    display:inline-block;font-size:.63rem;font-weight:700;
+    letter-spacing:.04em;text-transform:uppercase;
+    border-radius:20px;padding:2px 8px;
+}
+.rp-badge--waiting    {background:#dbeafe;color:#1d4ed8;}
+.rp-badge--calling    {background:#fef3c7;color:#92400e;}
+.rp-badge--transferred{background:#ede9fe;color:#5b21b6;}
+.rp-badge--current    {background:#f59e0b;color:#fff;}
+
+/* ── Recall button ───────────────────────────── */
+.rp-card__btn{
+    margin-top:4px;width:100%;
+    padding:5px 0;font-size:.75rem;font-weight:600;
+    border:none;border-radius:6px;
+    background:#2563eb;color:#fff;cursor:pointer;
+    transition:background .18s,transform .15s;
+}
+.rp-card__btn:hover {background:#1d4ed8;transform:scale(1.03);}
+.rp-card__btn:active{transform:scale(.97);}
+.rp-card--current .rp-card__btn{background:#d97706;}
+.rp-card--current .rp-card__btn:hover{background:#b45309;}
+
+/* ── Recall confirmation modal ───────────────── */
+.recall-modal{
+    border:none;border-radius:14px;overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.18);
+}
+.recall-modal__body{
+    padding:28px 24px 16px;text-align:center;
+    background:linear-gradient(160deg,#1e3a5f 0%,#1e40af 100%);
+}
+.recall-modal__code{
+    font-size:3rem;font-weight:900;color:#fbbf24;
+    letter-spacing:.06em;line-height:1;margin-bottom:6px;
+}
+.recall-modal__service{font-size:.9rem;color:#bfdbfe;margin-bottom:10px;}
+.recall-modal__status {margin-bottom:4px;}
+.recall-modal__footer{
+    display:flex;justify-content:flex-end;gap:8px;
+    padding:14px 20px;background:#f8fafc;
+    border-top:1px solid #e2e8f0;
+}
+
+/* ── Responsive ──────────────────────────────── */
+@media(max-width:576px){
+    .recall-panel__grid{
+        grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+        max-height:260px;
+    }
+    .rp-card__code{font-size:1.2rem;}
+}
+</style>
+
+{% endblock %}
+{% block footer %}{% include "queue/footer.html" %}{% endblock %}

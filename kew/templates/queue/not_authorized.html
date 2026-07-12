@@ -1,0 +1,20 @@
+{% extends 'queue/base.html' %}
+{% block header %}
+  {% include "queue/header.html" %}
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="height: 70vh;">
+  <div class="access-card text-center p-4">
+    <div class="icon mb-3">
+      <i class="fas fa-exclamation-triangle fa-3x"></i>
+    </div>
+    <h2 class="mb-3">Access Denied</h2>
+    <p class="mb-2">You are not authorized to view this page.</p>
+    <p>For more details, contact the system administrator.</p>
+    <a href="{% url 'login' %}" class="btn btn-light mt-3">Go Back</a>
+  </div>
+</div>
+
+{% endblock %}
+{% block footer %}
+  {% include "queue/footer.html" %}{% endblock %}

@@ -1,0 +1,155 @@
+﻿{% load static %}
+
+<header class="site-header">
+  <div class="header-row">
+    <div class="flex-spacer"></div>
+
+    <div class="header-center">
+      <img src="{% static 'queue/logo1.png' %}" alt="COMSATS Logo" class="header-logo">
+      <h1 class="header-title">COMSATS UNIVERSITY ISLAMABAD</h1>
+    </div>
+
+    <div class="header-right">
+      {% if user.is_authenticated %}
+      <div class="profile-dropdown">
+        <button class="profile-btn" id="profileDropdownBtn">
+          <i class="fas fa-user-circle"></i>
+          <span class="profile-username">{{ user.get_full_name|default:user.username }}</span>
+          <i class="fas fa-caret-down ms-1"></i>
+        </button>
+        <ul class="profile-menu" id="profileDropdownMenu">
+          <li><a href="{% url 'profile' %}"><i class="fas fa-user me-2"></i>Profile</a></li>
+          <li><a href="{% url 'password_change' %}"><i class="fas fa-key me-2"></i>Change Password</a></li>
+          <li class="divider"></li>
+          <li><a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+        </ul>
+      </div>
+      {% else %}
+      <a href="{% url 'login' %}" class="header-login-btn">Login</a>
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+<style>
+.site-header {
+  background-color: #474746;
+  padding: 0.6rem 1rem;
+  width: 100%;
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+.flex-spacer { flex: 1; }
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.header-logo {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+}
+.header-title {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: flex-end;
+}
+.profile-dropdown { position: relative; }
+.profile-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.profile-btn:hover { background: rgba(255,255,255,0.1); }
+.profile-btn i.fa-user-circle { font-size: 1.4rem; }
+.profile-menu {
+  display: none;
+  position: absolute;
+  right: 0; top: 100%;
+  background: #fff;
+  list-style: none;
+  padding: 0.4rem 0;
+  margin: 0.25rem 0 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  min-width: 180px;
+  z-index: 1000;
+}
+.profile-menu li a {
+  display: block;
+  padding: 0.5rem 1rem;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.profile-menu li a:hover { background: #f0f4ff; color: #325aa8; }
+.profile-menu .divider {
+  border-top: 1px solid #e5e7eb;
+  margin: 0.25rem 0;
+}
+.profile-menu.show { display: block; }
+.header-login-btn {
+  color: #fff;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  border: 1px solid #fff;
+  padding: 0.3rem 0.75rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.header-login-btn:hover { background: #fff; color: #474746; }
+
+@media (max-width: 768px) {
+  .header-center { flex-direction: column; gap: 0.2rem; }
+  .header-title { font-size: 1rem; text-align: center; white-space: normal; }
+  .header-logo { height: 45px; }
+  .profile-username { display: none; }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.getElementById('profileDropdownBtn');
+  var menu = document.getElementById('profileDropdownMenu');
+  if (btn && menu) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      menu.classList.toggle('show');
+    });
+    document.addEventListener('click', function() {
+      menu.classList.remove('show');
+    });
+  }
+});
+</script>

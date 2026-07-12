@@ -1,0 +1,16 @@
+{% extends 'queue/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+  <div class="card text-center p-4" style="max-width: 420px; width: 100%;">
+    <div class="card-body">
+      <h5 class="text-muted mb-1">COMSATS University Islamabad</h5>
+      <div style="font-size: 3.5rem; font-weight: 800; color: #325aa8; margin: 0.5rem 0;">{{ ticket.display_code }}</div>
+      <p class="mb-1"><strong>Service:</strong> {{ ticket.service.name }}</p>
+      <p class="text-muted mb-3"><strong>Time:</strong> {{ ticket.created_at|date:"Y-m-d H:i" }}</p>
+      <div class="alert alert-info py-2 mb-0">
+        <i class="fas fa-info-circle me-1"></i> Please wait for your ticket number to be announced.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

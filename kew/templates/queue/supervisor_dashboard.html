@@ -1,0 +1,608 @@
+{% extends 'queue/base.html' %}
+{% block header %}
+  {% include "queue/header.html" %}
+{% endblock %}
+{% block content %}
+<h2 class="dashboard-heading mb-4 text-center">
+  Supervisor Dashboard
+</h2>
+<!-- COMSATS THEME HORIZONTAL QUICK MENU (Compact & Professional) -->
+<nav class="navbar navbar-expand-lg shadow-sm rounded-3 mb-3"
+     style="background-color: #474746; padding: 0.25rem 0.5rem; border: 1px solid #5a5a5a;">
+  <div class="container-fluid">
+    <span class="navbar-brand text-white d-flex align-items-center gap-1 fs-7 fw-semibold">
+      <i class="fas fa-rocket fa-xs"></i>
+      Quick Menu
+    </span>
+
+    <button class="navbar-toggler text-white border-0 shadow-none p-0" type="button"
+            data-bs-toggle="collapse" data-bs-target="#comsatsQuickMenu"
+            aria-controls="comsatsQuickMenu" aria-expanded="false"
+            aria-label="Toggle navigation">
+      <i class="fas fa-ellipsis-h fa-sm"></i>
+    </button>
+
+    <div class="collapse navbar-collapse justify-content-end" id="comsatsQuickMenu">
+      <ul class="navbar-nav align-items-center gap-2">
+        <li class="nav-item">
+          <a class="nav-link text-white px-2 py-1 fs-7 rounded-2 hover-bg-light"
+             href="#timeSeriesGenerated"
+             style="transition: all 0.2s ease; text-decoration: none; border: 1px solid transparent;">
+            <i class="fas fa-chart-line fa-xs me-1"></i> Generated
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link text-white px-2 py-1 fs-7 rounded-2 hover-bg-light"
+             href="#servedByCounter"
+             style="transition: all 0.2s ease; text-decoration: none; border: 1px solid transparent;">
+            <i class="fas fa-desktop fa-xs me-1"></i> Served By Counter
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link text-white px-2 py-1 fs-7 rounded-2 hover-bg-light"
+             href="#servedByStaff"
+             style="transition: all 0.2s ease; text-decoration: none; border: 1px solid transparent;">
+            <i class="fas fa-user-check fa-xs me-1"></i> Served By Staff
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link text-white px-2 py-1 fs-7 rounded-2 hover-bg-light"
+             href="#recentGenerated"
+             style="transition: all 0.2s ease; text-decoration: none; border: 1px solid transparent;">
+            <i class="fas fa-ticket-alt fa-xs me-1"></i> Recent Generated
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link text-white px-2 py-1 fs-7 rounded-2 hover-bg-light"
+             href="#recentServed"
+             style="transition: all 0.2s ease; text-decoration: none; border: 1px solid transparent;">
+            <i class="fas fa-history fa-xs me-1"></i> Recent Served
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link text-white px-2 py-1 fs-7 rounded-2 hover-bg-light"
+             href="#transferSection"
+             style="transition: all 0.2s ease; text-decoration: none; border: 1px solid transparent;">
+            <i class="fas fa-exchange-alt fa-xs me-1"></i> Transfer
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+
+<button id="backToTopBtn" title="Back to Top">
+  <i class="fas fa-arrow-up"></i>
+</button>
+<script>
+  //Get the button
+  const backToTopBtn = document.getElementById("backToTopBtn");
+
+  // Show button when user scrolls down 100px
+  window.onscroll = function() {
+    if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+      backToTopBtn.style.display = "block";
+    } else {
+      backToTopBtn.style.display = "none";
+    }
+  };
+
+  // Scroll to top when clicked
+  backToTopBtn.addEventListener('click', function() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+<br><br>
+<!-- Summary Stats (Multi-Gradient Circular Design) -->
+ 
+<div class="row g-4 mb-5 text-center justify-content-center" style="background-color: #f8f9fa; padding: 1.5rem; border-radius: 12px; border: 1px solid #e9ecef;">
+
+  <div class="col-6 col-md-3">
+    <div class="d-flex justify-content-center">
+      <div class="stat-circle stat-blue shadow-lg stat-hover">
+        <div class="fw-bold fs-3 text-white" id="stat-generated">{{ total_generated }}</div>
+        <div class="small text-light mt-1">Generated</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="d-flex justify-content-center">
+      <div class="stat-circle stat-green shadow-lg stat-hover">
+        <div class="fw-bold fs-3 text-white" id="stat-served">{{ total_served }}</div>
+        <div class="small text-light mt-1">Served</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="d-flex justify-content-center">
+      <div class="stat-circle stat-red shadow-lg stat-hover">
+        <div class="fw-bold fs-3 text-white" id="stat-skipped">{{ total_skipped }}</div>
+        <div class="small text-light mt-1">Skipped</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="d-flex justify-content-center">
+      <div class="stat-circle stat-yellow shadow-lg stat-hover">
+        <div class="fw-bold fs-3 text-dark" id="stat-waiting-now">{{ total_waiting_now }}</div>
+        <div class="small text-dark mt-1">Waiting Now</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Time Series -->
+<div class="card shadow-sm mb-4" id="timeSeriesGenerated">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">Trend Analysis</h3>
+    <small class="text-danger">{{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}</small>
+  </div>
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <h4 class="text-primary mb-3"><i class="fas fa-plus-circle me-2"></i> Generated</h4>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th>
+                <th class="text-end">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in gen_series %}
+                <tr>
+                  <td>{{ r.period|date:"Y-m-d" }}</td>
+                  <td class="text-end">{{ r.count }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="2" class="text-center text-muted py-3">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <h4 class="text-success mb-3"><i class="fas fa-check-circle me-2"></i> Served</h4>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th>
+                <th class="text-end">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in srv_series %}
+                <tr>
+                  <td>{{ r.period|date:"Y-m-d" }}</td>
+                  <td class="text-end">{{ r.count }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="2" class="text-center text-muted py-3">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Served by Counter -->
+<div class="card shadow-sm mb-4" id="servedByCounter">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">Served by Counter</h3>
+    <small class="text-danger">{{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}</small>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Counter</th>
+            <th class="text-end">Tickets Served</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in per_counter %}
+            <tr>
+              <td>{{ c.current_counter__name|default:"(Unassigned)" }}</td>
+              <td class="text-end">{{ c.count }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="2" class="text-center text-muted py-3">No data</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Served by Staff -->
+<div class="card shadow-sm mb-4" id="servedByStaff">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">Served by Staff</h3>
+    <small class="text-danger">{{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}</small>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Staff</th>
+            <th class="text-end">Tickets Served</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in per_staff %}
+            <tr>
+              <td>{{ s.user__username|default:"(Unknown)" }}</td>
+              <td class="text-end">{{ s.count }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="2" class="text-center text-muted py-3">No data</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Generated -->
+<div class="card shadow-sm mb-4" id="recentGenerated">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">Recent Generated Tickets</h3>
+    <small class="text-danger">{{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}</small>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle" id="recentGeneratedTable">
+        <thead class="table-light">
+          <tr>
+            <th>Code</th>
+            <th>Service</th>
+            <th>Status</th>
+            <th>Counter</th>
+            <th>Created</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in recent_generated %}
+            <tr>
+              <td><code>{{ t.display_code }}</code></td>
+              <td>{{ t.service.name }}</td>
+              <td>
+                {% if t.status == 'WAITING' %}
+                  <span class="badge bg-warning text-dark">Waiting</span>
+                {% elif t.status == 'CALLING' %}
+                  <span class="badge bg-info text-dark">Calling</span>
+                {% elif t.status == 'SERVED' %}
+                  <span class="badge bg-success">Served</span>
+                {% elif t.status == 'SKIPPED' %}
+                  <span class="badge bg-danger">Skipped</span>
+                {% elif t.status == 'TRANSFERRED' %}
+                  <span class="badge bg-primary">Transferred</span>
+                {% elif t.status == 'CANCELED' %}
+                  <span class="badge bg-dark">Canceled</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ t.status|title }}</span>
+                {% endif %}
+              </td>
+              <td>{{ t.current_counter.name|default:"–" }}</td>
+              <td>{{ t.created_at|date:"Y-m-d H:i" }}</td>
+              <td>
+                {% if t.status == 'WAITING' or t.status == 'CALLING' or t.status == 'SKIPPED' %}
+                  <button class="btn btn-outline-primary btn-sm sv-transfer-btn"
+                          data-ticket-id="{{ t.id }}"
+                          data-ticket-code="{{ t.display_code }}">
+                    <i class="fas fa-exchange-alt me-1"></i>Transfer
+                  </button>
+                {% else %}
+                  <span class="text-muted">–</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-3">No tickets generated in this period.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Served -->
+<div class="card shadow-sm" id="recentServed">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">Recent Served Tickets</h3>
+    <small class="text-danger">{{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}</small>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle" id="recentServedTable">
+        <thead class="table-light">
+          <tr>
+            <th>Code</th>
+            <th>Service</th>
+            <th>Counter</th>
+            <th>Served By</th>
+            <th>Served At</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in recent_served %}
+            <tr>
+              <td><code>{{ t.display_code }}</code></td>
+              <td>{{ t.service.name }}</td>
+              <td>{{ t.current_counter.name|default:"–" }}</td>
+              <td>{{ t.served_by.username|default:"–" }}</td>
+              <td>{{ t.served_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3">No tickets served recently.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Toggle Button (Top Right Corner) -->
+
+<!-- Supervisor Transfer Modal -->
+<div class="modal fade" id="svTransferModal" tabindex="-1" aria-labelledby="svTransferModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="svTransferModalLabel">
+          <i class="fas fa-exchange-alt me-2"></i>Transfer Ticket
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Transfer ticket <strong id="svTransferCode"></strong> to:</p>
+        <select id="svTransferCounter" class="form-select">
+          {% for c in all_counters %}
+            <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="svTransferConfirm">
+          <i class="fas fa-check me-1"></i>Confirm Transfer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="d-flex justify-content-center mb-2">
+  <button class="btn btn-warning btn-sm fw-semibold shadow-sm px-3"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#filterFormCollapse"
+          aria-expanded="false"
+          aria-controls="filterFormCollapse">
+    <i class="fas fa-sliders-h me-1"></i> Fetch Reports
+  </button>
+</div>
+
+<!-- Collapsible Filter Form -->
+<div class="collapse" id="filterFormCollapse">
+  <div class="card shadow-sm mb-3 border-0" style="max-width: 900px; margin: auto; border-radius: 12px;">
+    <div class="card-body py-3 px-4 bg-light">
+      <form method="get" action="{% url 'supervisor_dashboard' %}">
+        <div class="row g-2 justify-content-center">
+          <div class="col-md-4 col-sm-6">
+            <label class="form-label fw-semibold small text-secondary mb-1">Start Date</label>
+            <input type="date" name="start" value="{{ start|date:'Y-m-d' }}" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-4 col-sm-6">
+            <label class="form-label fw-semibold small text-secondary mb-1">End Date</label>
+            <input type="date" name="end" value="{{ end|date:'Y-m-d' }}" class="form-control form-control-sm">
+          </div>
+        </div>
+
+        <div class="row g-2 justify-content-center mt-2">
+          <div class="col-md-4 col-sm-6">
+            <label class="form-label fw-semibold small text-secondary mb-1">Granularity</label>
+            <select name="gran" class="form-select form-select-sm">
+              <option value="day" {% if gran == 'day' %}selected{% endif %}>Daily</option>
+              <option value="month" {% if gran == 'month' %}selected{% endif %}>Monthly</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="text-center mt-3">
+          <button type="submit" class="btn btn-primary btn-sm fw-semibold me-1 shadow-sm px-3">
+            <i class="fas fa-filter me-1"></i> Apply Filters
+          </button>
+          <a href="{% url 'supervisor_export_csv' %}?start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}"
+             class="btn btn-outline-dark btn-sm fw-semibold shadow-sm px-3"
+             title="Export current data as CSV">
+            <i class="fas fa-file-csv me-1"></i> Export CSV
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block footer %}
+  {% include "queue/footer.html" %}
+  {% block scripts %}
+<script>
+/* ─────────────────────────────────────────────
+   CSRF helper
+───────────────────────────────────────────── */
+function getCsrfToken() {
+  var el = document.querySelector('[name=csrfmiddlewaretoken]');
+  if (el) return el.value;
+  var v = '; ' + document.cookie, p = v.split('; csrftoken=');
+  if (p.length === 2) return p.pop().split(';').shift();
+  return '{{ csrf_token }}';
+}
+
+/* ─────────────────────────────────────────────
+   DATATABLES — static server-rendered tables
+───────────────────────────────────────────── */
+$(document).ready(function () {
+
+  $('table.table').each(function () {
+    var $t = $(this);
+    if ($.fn.DataTable.isDataTable($t)) return;
+
+    /* Skip tables whose only tbody row is a "no data" placeholder */
+    var bodyRows = $t.find('tbody tr');
+    if (bodyRows.length === 1 && bodyRows.first().find('td[colspan]').length) return;
+    if (bodyRows.length === 0) return;
+
+    $t.DataTable({
+      responsive:   true,
+      pageLength:   10,
+      lengthChange: false,
+      ordering:     true,
+      info:         true,
+      language: {
+        search:            '_INPUT_',
+        searchPlaceholder: 'Search…',
+      },
+      dom: 'Bfrtip',
+      buttons: [
+        { extend: 'csv',   className: 'btn btn-outline-secondary btn-xs py-1 px-2' },
+        { extend: 'excel', className: 'btn btn-outline-success   btn-xs py-1 px-2' },
+        { extend: 'pdf',   className: 'btn btn-outline-danger    btn-xs py-1 px-2' },
+        { extend: 'print', className: 'btn btn-outline-primary   btn-xs py-1 px-2' },
+      ],
+    });
+  });
+
+});
+
+/* ─────────────────────────────────────────────
+   REALTIME STAT CIRCLES
+   Polls /supervisor/stats/ every 15 s and
+   animates the number change.
+───────────────────────────────────────────── */
+var STAT_START = '{{ start|date:"Y-m-d" }}';
+var STAT_END   = '{{ end|date:"Y-m-d" }}';
+
+function animateCount(el, newVal) {
+  var current = parseInt(el.textContent, 10) || 0;
+  newVal = parseInt(newVal, 10) || 0;
+  if (current === newVal) return;
+  var step   = newVal > current ? 1 : -1;
+  var steps  = Math.min(Math.abs(newVal - current), 20);
+  var delta  = Math.ceil(Math.abs(newVal - current) / steps);
+  var timer  = setInterval(function () {
+    current += step * delta;
+    if ((step > 0 && current >= newVal) || (step < 0 && current <= newVal)) {
+      current = newVal;
+      clearInterval(timer);
+    }
+    el.textContent = current;
+  }, 40);
+}
+
+function refreshStats() {
+  fetch('{% url "supervisor_stats" %}?start=' + STAT_START + '&end=' + STAT_END)
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d.ok) return;
+      var map = {
+        'stat-generated':   d.total_generated,
+        'stat-served':      d.total_served,
+        'stat-skipped':     d.total_skipped,
+        'stat-waiting-now': d.total_waiting_now,
+      };
+      Object.keys(map).forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) animateCount(el, map[id]);
+      });
+    })
+    .catch(function () { /* silently ignore network blips */ });
+}
+
+/* ─────────────────────────────────────────────
+   TRANSFER — modal + manual-by-ID
+───────────────────────────────────────────── */
+function executeTransfer(ticketId, counterId, onSuccess) {
+  fetch('{% url "supervisor_transfer_ticket" %}', {
+    method:  'POST',
+    headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:    'ticket_id=' + encodeURIComponent(ticketId) + '&counter_id=' + encodeURIComponent(counterId),
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (d) {
+    if (d.ok) {
+      alert(d.message);
+      if (onSuccess) onSuccess();
+    } else {
+      alert('Transfer failed: ' + (d.message || 'Unknown error'));
+    }
+  })
+  .catch(function () { alert('Server error during transfer.'); });
+}
+
+var pendingTicketId = null;
+
+/* Delegated listener on document so it survives any future DOM changes */
+function _delegatedTransfer(e) {
+  var btn = e.target.closest('.sv-transfer-btn');
+  if (!btn) return;
+  pendingTicketId = btn.dataset.ticketId;
+  document.getElementById('svTransferCode').textContent = btn.dataset.ticketCode;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('svTransferModal')).show();
+}
+
+/* ─────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* Stat polling — immediately + every 15 s */
+  refreshStats();
+  setInterval(refreshStats, 15000);
+
+  /* Delegated transfer button listener (covers current + future DOM) */
+  document.addEventListener('click', _delegatedTransfer);
+
+  /* Modal confirm */
+  document.getElementById('svTransferConfirm').addEventListener('click', function () {
+    if (!pendingTicketId) return;
+    var counterId = document.getElementById('svTransferCounter').value;
+    bootstrap.Modal.getInstance(document.getElementById('svTransferModal')).hide();
+    executeTransfer(pendingTicketId, counterId, function () {
+      pendingTicketId = null;
+      location.reload();
+    });
+  });
+
+  /* Manual transfer by ID */
+  document.getElementById('manualTransferBtn').addEventListener('click', function () {
+    var ticketId  = document.getElementById('manualTicketId').value.trim();
+    var counterId = document.getElementById('manualTargetCounter').value;
+    if (!ticketId)  { alert('Please enter a Ticket ID.');        return; }
+    if (!counterId) { alert('Please select a target counter.');  return; }
+    if (!confirm('Transfer ticket #' + ticketId + ' to the selected counter?')) return;
+    executeTransfer(ticketId, counterId, function () {
+      document.getElementById('manualTicketId').value = '';
+      location.reload();
+    });
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}
