@@ -1,10 +1,10 @@
+
+
 # QMS — Queue Management System
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![Django](https://img.shields.io/badge/Django-5.2-green)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey)
-
-# QMS — Queue Management System
 
 A Django-based ticket queue management system for service environments such as universities, banks, and government offices. Provides real-time queue updates, speaker announcements, and role-based dashboards for staff and supervisors.
 
