@@ -1,5 +1,11 @@
 # QMS — Queue Management System
 
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![Django](https://img.shields.io/badge/Django-5.2-green)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey)
+
+# QMS — Queue Management System
+
 A Django-based ticket queue management system for service environments such as universities, banks, and government offices. Provides real-time queue updates, speaker announcements, and role-based dashboards for staff and supervisors.
 
 ## Overview
@@ -114,15 +120,19 @@ Runs behind Gunicorn (WSGI) with Daphne handling the WebSocket connections, depl
 
 ## Screenshots
 
-| Kiosk | Staff Dashboard |
-|---|---|
-| ![Self-Service Kiosk](image.png) | ![Staff Dashboard](image-1.png) |
+| Kiosk | Login Page |
+|-------|------------|
+| ![Kiosk](screenshots/Kiosk.JPG) | ![Login Page](screenshots/login_page.JPG) |
 
-| Supervisor Dashboard | Supervisor Dashboard (cont.) |
-|---|---|
-| ![Supervisor Dashboard](image-2.png) | ![Supervisor Dashboard](image-3.png) |
+| Staff Dashboard | Supervisor Dashboard |
+|-----------------|----------------------|
+| ![Staff Dashboard](screenshots/staff_dashboard.JPG) | ![Supervisor Dashboard](screenshots/supervisor_dashboard.JPG) |
 
-Additionally screenshots are also available in `/qms_project/screenshots`.
+### Supervisor Dashboard (continued)
+
+![Supervisor Dashboard](screenshots/supervisor_dashboard_2.JPG)
+
+Additional screenshots available in `/screenshots`.
 
 ## Tech Highlights
 
