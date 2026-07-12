@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
 
 # Virtual Environment
 venv/
@@ -17,7 +18,7 @@ db
 logs/
 *.log
 
-# Static
+# Collected static files
 staticfiles/
 
 # Media
@@ -34,7 +35,3 @@ Thumbs.db
 # Python cache
 .pytest_cache/
 .mypy_cache/
-
-db.sqlite3
-logs/
-staticfiles/
